@@ -1,0 +1,17 @@
+﻿__pycache__/
+.venv/
+.venv
+.env
+artifacts/*
+!artifacts/README.md
+!artifacts/best_model.joblib
+!artifacts/metrics.json
+models/
+.DS_Store
+*.pyc
+*.pyo
+streamlit_app.log
+ShuRiceApp_error.log
+build/
+dist/
+*.spec

@@ -1,0 +1,23 @@
+{
+  "models": {
+    "linear_regression": {
+      "cv_rmse": 2.3529833997966594,
+      "cv_r2": 0.5510731899446604,
+      "holdout_rmse": 2.8170761954523993,
+      "holdout_r2": 0.6206446809625616
+    },
+    "random_forest": {
+      "cv_rmse": 4.626717527393134,
+      "cv_r2": -0.35430037216418403,
+      "holdout_rmse": 3.8763437806617653,
+      "holdout_r2": 0.2817203493558478
+    },
+    "hist_gradient_boosting": {
+      "cv_rmse": 4.540759198025097,
+      "cv_r2": -0.33019642767840635,
+      "holdout_rmse": 4.383622215790368,
+      "holdout_r2": 0.08142371577373542
+    }
+  },
+  "selected_model": "linear_regression"
+}

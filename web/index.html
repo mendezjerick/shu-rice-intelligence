@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shu Rice Intelligence</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <section id="home" class="screen bg-home active">
+    <div class="section-overlay"></div>
+    <div class="content center">
+      <div class="card glass hero-card">
+        <p class="eyebrow">Shu Rice Intelligence</p>
+        <h1>Bright rice market intelligence</h1>
+        <p class="subtitle">
+          Check spot prices or generate multi-step forecasts with your existing ML pipeline.
+        </p>
+        <div class="hero-actions">
+          <button class="btn primary" data-target="check-price">Check Price</button>
+          <button class="btn secondary" data-target="forecast">Forecast</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="check-price" class="screen bg-mode">
+    <div class="section-overlay"></div>
+    <div class="top-nav glass">
+      <div class="nav-left">
+        <span class="nav-title">Shu Rice Intelligence</span>
+      </div>
+      <div class="nav-actions">
+        <button class="btn ghost" data-target="home">Home</button>
+        <button class="btn ghost" data-target="check-price">Check Price</button>
+        <button class="btn ghost" data-target="forecast">Forecast</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="card glass panel">
+        <div class="card-header">
+          <div>
+            <p class="eyebrow">Spot check</p>
+            <h2>Check Price</h2>
+            <p class="subtitle small">Select a date and location to see the recorded price.</p>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label class="form-field">
+            <span>Date (YYYY-MM-DD)</span>
+            <input type="date" id="priceDate">
+          </label>
+          <label class="form-field">
+            <span>Location / Region</span>
+            <select id="locationSelect">
+              <option value="">Select a region</option>
+              <option>Autonomous region in Muslim Mindanao</option>
+              <option>CAR</option>
+              <option>Central Luzon</option>
+              <option>Bicol Region</option>
+              <option>Central Visayas</option>
+              <option>Western Visayas</option>
+            </select>
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" id="checkPriceBtn">Check Price</button>
+          </div>
+        </div>
+
+        <div class="card glass result-card" id="priceResultCard">
+          <div class="result-header">
+            <div>
+              <p class="eyebrow">Result</p>
+              <h3 id="priceTitle">Waiting for input</h3>
+            </div>
+            <span class="badge" id="priceStatus">Idle</span>
+          </div>
+          <div class="result-grid">
+            <div class="result-item">
+              <span class="label">Date</span>
+              <span id="priceDateValue">--</span>
+            </div>
+            <div class="result-item">
+              <span class="label">Location</span>
+              <span id="priceLocationValue">--</span>
+            </div>
+            <div class="result-item">
+              <span class="label">Price (PHP/kg)</span>
+              <span class="price" id="priceValue">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="forecast" class="screen bg-mode">
+    <div class="section-overlay"></div>
+    <div class="top-nav glass">
+      <div class="nav-left">
+        <span class="nav-title">Shu Rice Intelligence</span>
+      </div>
+      <div class="nav-actions">
+        <button class="btn ghost" data-target="home">Home</button>
+        <button class="btn ghost" data-target="check-price">Check Price</button>
+        <button class="btn ghost" data-target="forecast">Forecast</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="card glass panel">
+        <div class="card-header">
+          <div>
+            <p class="eyebrow">Forecasting</p>
+            <h2>Run Forecast</h2>
+            <p class="subtitle small">Configure your horizon and target date.</p>
+          </div>
+        </div>
+        <div class="form-grid forecast-grid">
+          <label class="form-field">
+            <span>Months ahead (1-24)</span>
+            <input type="number" id="monthsAhead" min="1" max="24" value="6">
+          </label>
+          <label class="form-field">
+            <span>Target year</span>
+            <select id="targetYear"></select>
+          </label>
+          <label class="form-field">
+            <span>Target month</span>
+            <select id="targetMonth">
+              <option value="">Auto</option>
+              <option value="1">01</option>
+              <option value="2">02</option>
+              <option value="3">03</option>
+              <option value="4">04</option>
+              <option value="5">05</option>
+              <option value="6">06</option>
+              <option value="7">07</option>
+              <option value="8">08</option>
+              <option value="9">09</option>
+              <option value="10">10</option>
+              <option value="11">11</option>
+              <option value="12">12</option>
+            </select>
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" id="runForecastBtn">Run Forecast</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card glass chart-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Chart</p>
+              <h3>Historical vs Forecast National Price</h3>
+            </div>
+          </div>
+          <canvas id="forecastChart" height="220"></canvas>
+        </div>
+
+        <div class="card glass table-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Table</p>
+              <h3>Forecast results</h3>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="forecastTable">
+              <thead>
+                <tr>
+                  <th>Region</th>
+                  <th>Current date</th>
+                  <th>Forecast date</th>
+                  <th>Avg price</th>
+                  <th>Forecast price</th>
+                  <th>% change</th>
+                  <th>Step</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card glass table-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Dataset peek</p>
+              <h3>Train &amp; Holdout preview</h3>
+            </div>
+          </div>
+          <div class="table-wrap split-table">
+            <div>
+              <p class="label">Train sample</p>
+              <table id="trainTable">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div>
+              <p class="label">Holdout sample</p>
+              <table id="holdoutTable">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card glass metrics-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Evaluation</p>
+              <h3>Metrics</h3>
+            </div>
+          </div>
+          <pre id="metricsBlock">{}</pre>
+        </div>
+
+        <div class="card glass explanation-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Narrative</p>
+              <h3>How this forecast works</h3>
+            </div>
+          </div>
+          <p id="explanationText">
+            Your trained pipeline powers this forecast. Swap in your existing DataManager logic in backend.py to connect the live model.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="main.js"></script>
+</body>
+</html>
