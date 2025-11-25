@@ -137,6 +137,51 @@ class RiceAppBackend:
         self._data_mgr = DataManager(base_dir)
         self._warned: set[str] = set()
 
+    async def get_overview(self) -> dict:
+        """Return summary metrics for the dashboard tiles."""
+        df = getattr(self._data_mgr, "region_df", pd.DataFrame())
+        if not df.empty:
+            row_count = int(len(df))
+            region_col = getattr(self._data_mgr.training_cfg, "region_col", "admin1")
+            region_count = int(df[region_col].nunique())
+            min_date = pd.to_datetime(df["date"]).min()
+            max_date = pd.to_datetime(df["date"]).max()
+            year_range = f"{min_date.year}–{max_date.year}"
+            latest_month = max_date.strftime("%Y-%m")
+        else:
+            today = pd.Timestamp.today()
+            row_count = 0
+            region_count = 0
+            year_range = f"{today.year - 2}–{today.year}"
+            latest_month = pd.Timestamp(today.year, today.month, 1).strftime("%Y-%m")
+
+        return {
+            "rows": row_count,
+            "regions": region_count,
+            "year_range": year_range,
+            "latest_month": latest_month,
+        }
+
+    async def get_national_series(self) -> dict:
+        """Serve national price history for the Plotly chart."""
+        national_df = getattr(self._data_mgr, "national_df", pd.DataFrame())
+        if not national_df.empty:
+            series = national_df.sort_values("date").tail(36)
+            dates = series["date"].dt.strftime("%Y-%m").tolist()
+            values = [round(float(v), 2) for v in series["national_price"]]
+            return {"dates": dates, "values": values}
+
+        # Fallback demo data if no dataset/model is available.
+        today = pd.Timestamp.today().normalize()
+        dates = []
+        values = []
+        base = 42.0
+        for months_back in range(15, -1, -1):
+            ts = today - pd.DateOffset(months=months_back)
+            dates.append(ts.strftime("%Y-%m"))
+            values.append(round(base + months_back * 0.25, 2))
+        return {"dates": dates, "values": values}
+
     async def get_price(self, date_str: str, location: str) -> dict:
         """Lookup the closest price on or before the provided date."""
         try:
