@@ -258,6 +258,8 @@ p {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.04);
+  color: #1f2a33 !important;       /* dark Shu text */
+  font-weight: 600;   
 }
 
 .label {
@@ -326,18 +328,25 @@ tbody tr:nth-child(even) {
 }
 
 .metrics-card pre {
-  background: rgba(167, 207, 242, 0.15);
-  border-radius: 12px;
-  padding: 14px;
-  overflow-x: auto;
-  font-size: 13px;
-  line-height: 1.4;
-  border: 1px solid rgba(107, 183, 224, 0.2);
+  background: rgba(255, 255, 255, 0.35);      /* stronger frost */
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+
+  color: #1f2a33;               /* dark text = readable on light frosted panel */
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.5;
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) inset;
+  white-space: pre-wrap;        /* avoids text going off screen */
 }
 
 .explanation-card p {
   margin-top: 8px;
   line-height: 1.55;
+  color: #1f2a33;   /* <-- add this */
 }
 
 .chart-card {
