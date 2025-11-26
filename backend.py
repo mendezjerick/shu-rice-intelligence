@@ -114,7 +114,7 @@ class DataManager:
         if target_year and target_month:
             target_date = pd.Timestamp(year=target_year, month=target_month, day=1)
             forecasts = forecasts[forecasts["forecast_date"] == target_date]
-        forecasts = forecasts.sort_values(["step", "admin1"]).reset_index(drop=True)
+        forecasts = forecasts.sort_values(["step", self.training_cfg.region_col]).reset_index(drop=True)
         return forecasts, histories
 
     def _warn_once(self, key: str, message: str) -> None:
@@ -127,7 +127,7 @@ class DataManager:
 
 
 class RiceAppBackend:
-    """Exposes async methods that PyWebView can reach from JavaScript."""
+    """Exposes methods that PyWebView can reach from JavaScript."""
 
     def __init__(self, base_path: Path | None = None) -> None:
         base_dir = Path(getattr(sys, "_MEIPASS", base_path or Path(__file__).resolve().parent))
@@ -137,12 +137,12 @@ class RiceAppBackend:
         self._data_mgr = DataManager(base_dir)
         self._warned: set[str] = set()
 
-    async def get_overview(self) -> dict:
+    def get_overview(self) -> dict:
         """Return summary metrics for the dashboard tiles."""
         df = getattr(self._data_mgr, "region_df", pd.DataFrame())
         if not df.empty:
             row_count = int(len(df))
-            region_col = getattr(self._data_mgr.training_cfg, "region_col", "admin1")
+            region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
             region_count = int(df[region_col].nunique())
             min_date = pd.to_datetime(df["date"]).min()
             max_date = pd.to_datetime(df["date"]).max()
@@ -162,7 +162,7 @@ class RiceAppBackend:
             "latest_month": latest_month,
         }
 
-    async def get_national_series(self) -> dict:
+    def get_national_series(self) -> dict:
         """Serve national price history for the Plotly chart."""
         national_df = getattr(self._data_mgr, "national_df", pd.DataFrame())
         if not national_df.empty:
@@ -182,7 +182,16 @@ class RiceAppBackend:
             values.append(round(base + months_back * 0.25, 2))
         return {"dates": dates, "values": values}
 
-    async def get_price(self, date_str: str, location: str) -> dict:
+    def get_regions(self) -> list[str]:
+        """Return unique regions available in the dataset."""
+        region_df = getattr(self._data_mgr, "region_df", pd.DataFrame())
+        region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
+        if region_df.empty or region_col not in region_df.columns:
+            return []
+        regions = sorted(region_df[region_col].dropna().astype(str).unique().tolist())
+        return regions
+
+    def get_price(self, date_str: str, location: str) -> dict:
         """Lookup the closest price on or before the provided date."""
         try:
             target_date = pd.to_datetime(date_str).to_period("M").to_timestamp()
@@ -192,10 +201,11 @@ class RiceAppBackend:
                 "location": location,
                 "price": None,
                 "status": "error",
-                "message": "Invalid date format. Use YYYY-MM-DD.",
+                "message": "Invalid date format. Use YYYY-MM or YYYY-MM-DD.",
             }
 
         region_df = self._data_mgr.region_df
+        region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
         if region_df.empty or not location:
             return {
                 "date": date_str,
@@ -205,8 +215,19 @@ class RiceAppBackend:
                 "message": "No data available for that location.",
             }
 
+        min_date = region_df["date"].min()
+        max_date = region_df["date"].max()
+        if target_date < min_date or target_date > max_date:
+            return {
+                "date": date_str,
+                "location": location,
+                "price": None,
+                "status": "no_data",
+                "message": "Date is outside the available data range.",
+            }
+
         matches = (
-            region_df.loc[region_df["admin1"] == location]
+            region_df.loc[region_df[region_col] == location]
             .loc[lambda df: df["date"] <= target_date]
             .sort_values("date")
         )
@@ -227,7 +248,7 @@ class RiceAppBackend:
             "status": "ok",
         }
 
-    async def get_forecast(self, months: int, target_year: Optional[int], target_month: Optional[int]) -> dict:
+    def get_forecast(self, months: int, target_year: Optional[int], target_month: Optional[int]) -> dict:
         """Return chart, table, and preview data for the forecast screen."""
         months = max(1, min(int(months or 1), 24))
         forecasts, histories = self._data_mgr.forecast(months, target_year, target_month)
@@ -285,9 +306,10 @@ class RiceAppBackend:
             forecast_dates.append(forecast_date.strftime("%Y-%m"))
             forecast_values.append(round(last_price * ((1 + growth) ** step), 2))
 
-        sample_regions = self._data_mgr.region_df["admin1"].unique().tolist() if not self._data_mgr.region_df.empty else [
-            "Sample Region"
-        ]
+        region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
+        sample_regions = (
+            self._data_mgr.region_df[region_col].unique().tolist() if not self._data_mgr.region_df.empty else ["Sample Region"]
+        )
         table_rows = []
         for region in sample_regions:
             for step, (f_date, f_price) in enumerate(zip(forecast_dates, forecast_values, strict=False), start=1):
@@ -330,7 +352,7 @@ class RiceAppBackend:
         for _, row in forecasts.iterrows():
             rows.append(
                 {
-                    "region": row["admin1"],
+                    "region": row[getattr(self._data_mgr.training_cfg, "region_col", "region")],
                     "current_date": row["current_date"].strftime("%Y-%m"),
                     "forecast_date": row["forecast_date"].strftime("%Y-%m"),
                     "avg_price": round(float(row["avg_price"]), 2),

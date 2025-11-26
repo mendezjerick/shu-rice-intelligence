@@ -1,8 +1,12 @@
 const sections = ["dashboard", "check-price", "forecast"];
 const SECTION_ALIASES = { home: "dashboard" };
 let forecastChart = null;
+let api = null;
 
 const demoApi = {
+  async get_regions() {
+    return ["Sample Region A", "Sample Region B", "Sample Region C"];
+  },
   async get_overview() {
     return {
       rows: 12480,
@@ -68,11 +72,11 @@ const demoApi = {
       });
     });
 
-    const sampleRows = Array.from({ length: 6 }).map((_, idx) => ({
-      admin1: regions[idx % regions.length],
-      date: historyDates[idx],
-      avg_price: historyValues[idx] || base,
-    }));
+  const sampleRows = Array.from({ length: 6 }).map((_, idx) => ({
+    region: regions[idx % regions.length],
+    date: historyDates[idx],
+    avg_price: historyValues[idx] || base,
+  }));
 
     return {
       historical: { dates: historyDates, values: historyValues },
@@ -86,11 +90,11 @@ const demoApi = {
   },
 };
 
-const api = window.pywebview?.api || demoApi;
-
 document.addEventListener("DOMContentLoaded", () => {
+  bindApi();
   initNavigation();
   setDefaultFormValues();
+  loadRegions();
 
   document.getElementById("checkPriceBtn")?.addEventListener("click", handlePriceCheck);
   document.getElementById("runForecastBtn")?.addEventListener("click", handleForecast);
@@ -99,6 +103,30 @@ document.addEventListener("DOMContentLoaded", () => {
   loadOverview();
   loadNationalChart();
 });
+
+function bindApi() {
+  if (window.pywebview?.api) {
+    api = window.pywebview.api;
+    refreshDashboardData();
+    loadRegions();
+    return;
+  }
+  api = demoApi;
+  window.addEventListener(
+    "pywebviewready",
+    () => {
+      api = window.pywebview.api;
+      refreshDashboardData();
+      loadRegions();
+    },
+    { once: true },
+  );
+}
+
+function refreshDashboardData() {
+  loadOverview();
+  loadNationalChart();
+}
 
 function normalizeSection(target) {
   return SECTION_ALIASES[target] || target;
@@ -124,10 +152,30 @@ function setNavActive(target) {
   });
 }
 
+async function loadRegions() {
+  const select = document.getElementById("locationSelect");
+  if (!select) return;
+  const fallback = await demoApi.get_regions();
+  let regions = fallback;
+  try {
+    regions = api && api.get_regions ? await api.get_regions() : fallback;
+  } catch (err) {
+    regions = fallback;
+    console.error("Region load failed", err); // eslint-disable-line no-console
+  }
+  select.innerHTML = '<option value="">Select a region</option>';
+  regions.forEach((region) => {
+    const option = document.createElement("option");
+    option.value = region;
+    option.textContent = region;
+    select.appendChild(option);
+  });
+}
+
 async function loadOverview() {
   const fallback = await demoApi.get_overview();
   try {
-    const data = api.get_overview ? await api.get_overview() : fallback;
+    const data = api && api.get_overview ? await api.get_overview() : fallback;
     renderOverview(data || fallback);
   } catch (err) {
     renderOverview(fallback);
@@ -156,7 +204,7 @@ async function loadNationalChart() {
   const fallback = await demoApi.get_national_series();
   let series = fallback;
   try {
-    series = api.get_national_series ? await api.get_national_series() : fallback;
+    series = api && api.get_national_series ? await api.get_national_series() : fallback;
   } catch (err) {
     series = fallback;
     console.error("National series load failed", err); // eslint-disable-line no-console
@@ -205,7 +253,7 @@ function setDefaultFormValues() {
   const today = new Date();
   const dateInput = document.getElementById("priceDate");
   if (dateInput) {
-    dateInput.value = today.toISOString().slice(0, 10);
+    dateInput.value = today.toISOString().slice(0, 7); // YYYY-MM for month picker
   }
 
   const targetYear = document.getElementById("targetYear");

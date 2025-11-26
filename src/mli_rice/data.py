@@ -10,7 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_PATH = ROOT_DIR / "rice.csv"
 
 
-def _coerce_admin_value(value: str) -> str:
+def _coerce_region_value(value: str) -> str:
     return value.strip()
 
 
@@ -20,13 +20,15 @@ def load_rice_data(path: str | Path | None = None, *, columns: Iterable[str] | N
     if not csv_path.exists():
         raise FileNotFoundError(f"Cannot locate rice dataset at {csv_path}")
     df = pd.read_csv(csv_path)
-    expected = {"admin1", "year", "month", "price"}
-    missing = expected - set(df.columns)
+    required = {"region", "year", "month", "price"}
+    missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing columns in dataset: {sorted(missing)}")
-    df["admin1"] = df["admin1"].astype(str).map(_coerce_admin_value)
+    df["region"] = df["region"].astype(str).map(_coerce_region_value)
+    if "province" in df.columns:
+        df["province"] = df["province"].astype(str).map(_coerce_region_value)
     df["date"] = pd.to_datetime(dict(year=df["year"], month=df["month"], day=1))
-    df = df.sort_values(["admin1", "date"]).reset_index(drop=True)
+    df = df.sort_values(["region", "date"]).reset_index(drop=True)
     if columns is not None:
         df = df[list(columns)]
     return df
@@ -45,11 +47,11 @@ def national_monthly_average(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def region_monthly_average(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute the average monthly price per region (admin1)."""
+    """Compute the average monthly price per region."""
     if "date" not in df.columns:
         raise ValueError("DataFrame must contain a 'date' column; run load_rice_data first")
     grouped = (
-        df.groupby(["admin1", "date"], as_index=False)["price"].mean().rename(columns={"price": "avg_price"})
+        df.groupby(["region", "date"], as_index=False)["price"].mean().rename(columns={"price": "avg_price"})
     )
     grouped["year"] = grouped["date"].dt.year
     grouped["month"] = grouped["date"].dt.month

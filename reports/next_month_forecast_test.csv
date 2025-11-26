@@ -1,4 +1,4 @@
-admin1,current_date,forecast_date,avg_price,forecast_price,price_change,pct_change,step
+region,current_date,forecast_date,avg_price,forecast_price,price_change,pct_change,step
 Autonomous region in Muslim Mindanao,2025-09-01,2025-10-01,46.26142857142857,47.07270019763496,0.8112716262063913,0.017536674747382082,1
 Cordillera Administrative region,2025-09-01,2025-10-01,45.327,45.746241486929534,0.4192414869295362,0.00924926615327589,1
 National Capital region,2025-09-01,2025-10-01,47.6,47.35964355077833,-0.24035644922167165,-0.0050495052357494045,1
