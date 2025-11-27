@@ -34,8 +34,8 @@ def generate_advisories(
     national_std = national_monthly.tail(12).std()
 
     for _, row in forecast_df.iterrows():
-        region = row["admin1"]
-        regional_history = region_df[region_df["admin1"] == region].sort_values("date")
+        region = row["region"]
+        regional_history = region_df[region_df["region"] == region].sort_values("date")
         pct_change = row["pct_change"]
         trend = _recent_trend(regional_history["avg_price"], window=trend_window)
         latest_price = regional_history["avg_price"].iloc[-1]

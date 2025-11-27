@@ -29,7 +29,7 @@ class TrainingConfig:
     holdout_months: int = 12
     artifacts_dir: Path = Path("artifacts")
     price_col: str = "avg_price"
-    region_col: str = "admin1"
+    region_col: str = "region"
 
     @property
     def artifact_path(self) -> Path:
@@ -190,15 +190,17 @@ def prepare_inference_frame(
     region_df: pd.DataFrame,
     *,
     feature_config: FeatureConfig | None = None,
+    region_col: str = "region",
 ) -> pd.DataFrame:
     feature_config = feature_config or FeatureConfig()
     inference_table = build_feature_table(
         region_df,
+        region_col=region_col,
         config=feature_config,
         drop_last_horizon=False,
         drop_rows_with_na=False,
     )
-    latest_rows = inference_table.sort_values(["admin1", "date"]).groupby("admin1").tail(1)
+    latest_rows = inference_table.sort_values([region_col, "date"]).groupby(region_col).tail(1)
     return latest_rows.reset_index(drop=True)
 
 
@@ -211,7 +213,11 @@ def forecast_next_month(
 ) -> pd.DataFrame:
     config = config or TrainingConfig()
     feature_config = feature_config or FeatureConfig()
-    inference_rows = prepare_inference_frame(region_df, feature_config=feature_config)
+    inference_rows = prepare_inference_frame(
+        region_df,
+        feature_config=feature_config,
+        region_col=config.region_col,
+    )
     X_latest, _ = select_feature_columns(inference_rows, price_col=config.price_col, require_target=False)
     predictions = pipeline.predict(X_latest)
     latest_actual = (
@@ -246,7 +252,6 @@ def _append_predictions_to_history(
 ) -> pd.DataFrame:
     additions = predictions[[config.region_col, "forecast_date", "forecast_price"]].rename(
         columns={
-            config.region_col: "admin1",
             "forecast_date": "date",
             "forecast_price": config.price_col,
         }
@@ -255,7 +260,7 @@ def _append_predictions_to_history(
     additions["month"] = additions["date"].dt.month
     updated = (
         pd.concat([history, additions], ignore_index=True)
-        .sort_values(["admin1", "date"])
+        .sort_values([config.region_col, "date"])
         .reset_index(drop=True)
     )
     return updated
@@ -273,7 +278,7 @@ def multi_step_forecast(
         raise ValueError("months must be >= 1")
     config = config or TrainingConfig()
     feature_config = feature_config or FeatureConfig()
-    working_history = region_df.sort_values(["admin1", "date"]).reset_index(drop=True).copy()
+    working_history = region_df.sort_values([config.region_col, "date"]).reset_index(drop=True).copy()
     forecasts: list[pd.DataFrame] = []
     history_snapshots: list[pd.DataFrame] = []
     for step in range(months):

@@ -7,6 +7,12 @@
   --blue: #6bb7e0;
   --text: #2b2b2b;
   --shadow: 0 16px 34px rgba(0, 0, 0, 0.16);
+  --panel-bg: rgba(0, 0, 0, 0.45);
+  --panel-border: rgba(255, 255, 255, 0.18);
+  --text-light: #f1f1f1;
+  --shu-blue: #a7cff2;
+  --shu-gold: #f2c649;
+  --shadow-strong: 0 24px 60px rgba(0, 0, 0, 0.4);
 }
 
 *,
@@ -53,6 +59,10 @@ p {
 
 .bg-mode {
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.25)), url("../backgrounds/shu2.jpg");
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
 }
 
 .section-overlay {
@@ -122,13 +132,13 @@ p {
 
 .top-nav {
   position: sticky;
-  top: 0;
+  top: 16px;               /* matches dashboard nav spacing */
   z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 18px;
-  margin: 0 5vw;
+  margin: 16px 6vw 0;      /* identical to .main-nav */
   border-radius: 14px;
   background: rgba(245, 230, 198, 0.8);
   backdrop-filter: blur(10px);
@@ -248,6 +258,8 @@ p {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.04);
+  color: #1f2a33 !important;       /* dark Shu text */
+  font-weight: 600;   
 }
 
 .label {
@@ -311,23 +323,99 @@ tbody tr:nth-child(even) {
 
 .split-table {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 14px;
 }
 
+.split-table > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 320px;
+  overflow: auto;
+}
+
+.split-table table {
+  width: max-content;
+}
+
 .metrics-card pre {
-  background: rgba(167, 207, 242, 0.15);
+  background: rgba(255, 255, 255, 0.35);      /* stronger frost */
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+
+  color: #1f2a33;               /* dark text = readable on light frosted panel */
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.5;
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) inset;
+  white-space: pre-wrap;        /* avoids text going off screen */
+}
+
+.advisories-card .advisories-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  color: #1f2a33;
+}
+
+.advisory-pill {
+  padding: 12px 14px;
   border-radius: 12px;
-  padding: 14px;
-  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #1f2a33;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.advisory-pill .advisory-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.advisory-pill .advisory-region {
+  color: #1f2a33;
+}
+
+.advisory-pill .advisory-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(242, 198, 73, 0.2);
+  color: #7a5a10;
+  border: 1px solid rgba(242, 198, 73, 0.4);
   font-size: 13px;
-  line-height: 1.4;
-  border: 1px solid rgba(107, 183, 224, 0.2);
+}
+
+.advisory-pill .advisory-meta {
+  font-size: 12px;
+  color: #394452;
+}
+
+.advisory-pill .advisory-body {
+  margin: 4px 0;
+  line-height: 1.5;
+  color: #1f2a33;
+}
+
+.advisory-pill .advisory-rationale {
+  font-size: 13px;
+  color: #4c5665;
 }
 
 .explanation-card p {
   margin-top: 8px;
   line-height: 1.55;
+  color: #1f2a33;   /* <-- add this */
 }
 
 .chart-card {
@@ -337,6 +425,398 @@ tbody tr:nth-child(even) {
 .chart-card canvas {
   width: 100% !important;
   height: 320px !important;
+}
+
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.loader-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.loader-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 26px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f1f1f1;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+.loader-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--shu-gold);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+body.dashboard-bg {
+  background: linear-gradient(125deg, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.48)), url("../backgrounds/shu.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: var(--text-light);
+}
+
+.main-nav {
+  position: static;
+  top: 16px;
+
+  margin: 16px 6vw 0;
+
+  /* REMOVE width/max-width completely */
+
+  padding: 14px 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  z-index: 10;
+  border-radius: 18px;
+  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.main-nav.hidden {
+  display: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-light);
+}
+
+.brand-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--shu-gold), var(--shu-blue));
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.06);
+}
+
+.brand-title {
+  color: var(--text-light);
+  font-size: 20px;
+  margin: 2px 0 0;
+  letter-spacing: 0.01em;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  color: var(--text-light);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.nav-btn.active {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--shu-blue);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+/* ==========================================================
+   UNIFIED GLASS NAV (for Price + Forecast pages)
+   Dashboard structure + Light theme colors
+   ========================================================== */
+
+.mode-nav {
+  position: sticky;
+  top: 16px;
+  margin: 16px 5vw 0;
+  padding: 16px 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  border-radius: 18px;
+
+  /* NEW: Shu wheat-cream gradient with warm glow */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 253, 245, 0.70) 0%,
+    rgba(253, 244, 223, 0.75) 40%,
+    rgba(246, 228, 186, 0.78) 100%
+  );
+
+  /* stronger frost + warm tone */
+  backdrop-filter: blur(22px) saturate(135%);
+
+  border: 1px solid rgba(255, 255, 255, 0.65);
+
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.10),
+    inset 0 0 30px rgba(255, 255, 255, 0.20);
+
+  color: #1f2a33;
+}
+
+/* Brand section – matches dashboard structure but light-mode colors */
+.mode-nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #1f2a33;
+}
+
+.mode-nav .brand-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--shu-gold), var(--shu-blue));
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.18);
+}
+
+.mode-nav .brand-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 2px;
+  letter-spacing: 0.01em;
+  color: #1f2a33;
+}
+
+/* Nav Buttons */
+.mode-nav .nav-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mode-nav .nav-btn {
+  background: rgba(255, 255, 255, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #2b2b2b;
+
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.mode-nav .nav-btn:hover {
+  background: rgba(255, 255, 255, 0.45);
+  transform: translateY(-1px);
+}
+
+.mode-nav .nav-btn.active {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(255, 255, 255, 0.82);
+  color: var(--blue);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
+}
+
+/* Responsive behavior (mirrors dashboard nav behavior) */
+@media (max-width: 900px) {
+  .mode-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    top: 10px;
+    margin: 10px 4vw 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .mode-nav .nav-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .mode-nav .nav-btn {
+    width: 100%;
+  }
+}
+
+.dashboard-screen {
+  position: relative;
+  background: transparent; /* use body background only to avoid double images */
+  overflow: hidden;
+}
+
+.dashboard-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 25% 20%, rgba(167, 207, 242, 0.16), transparent 32%),
+    radial-gradient(circle at 80% 10%, rgba(242, 198, 73, 0.12), transparent 30%),
+    rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dashboard-content {
+  position: relative;
+  z-index: 1;
+  padding: 90px 6vw 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-strong);
+  color: var(--text-light);
+}
+
+#dashboard .panel {
+  padding: 24px 26px;
+}
+
+#dashboard h1,
+#dashboard h2,
+#dashboard h3,
+#dashboard p,
+#dashboard span {
+  color: var(--text-light);
+}
+
+#dashboard .subtitle.light {
+  color: rgba(241, 241, 241, 0.82);
+}
+
+#dashboard .overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+#dashboard .overview-tile {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+#dashboard .overview-tile h3 {
+  font-size: 32px;
+  margin: 6px 0 4px;
+  letter-spacing: 0.02em;
+}
+
+#dashboard .mini-text {
+  font-size: 13px;
+  color: rgba(241, 241, 241, 0.72);
+}
+
+#dashboard .chart-panel {
+  padding: 22px 22px 30px;
+}
+
+#dashboard #nationalChart {
+  width: 100%;
+  min-height: 420px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  color: var(--text-light);
+  background: rgba(255, 255, 255, 0.08);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.chip.accent {
+  border-color: rgba(167, 207, 242, 0.5);
+  color: var(--shu-blue);
+}
+
+.eyebrow.light {
+  color: rgba(241, 241, 241, 0.78);
+}
+
+.fade-in {
+  animation: fadeIn 0.7s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .main-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 10px 4vw 0;
+    padding: 12px 16px;
+  }
+
+  .dashboard-content {
+    padding: 80px 5vw 90px;
+  }
+}
+
+@media (max-width: 600px) {
+  .nav-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .nav-btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 900px) {
@@ -365,4 +845,86 @@ tbody tr:nth-child(even) {
     width: 100%;
     justify-content: flex-start;
   }
+}
+/* ==========================================================
+   OVERRIDES FOR MODE-NAV (fixing dashboard overrides)
+   ========================================================== */
+
+.mode-nav .brand {
+  color: #1f2a33 !important;
+}
+
+.mode-nav .brand-title {
+  color: #1f2a33 !important;
+}
+
+.mode-nav .eyebrow {
+  color: rgba(60, 60, 60, 0.65) !important;
+}
+
+.mode-nav .nav-btn {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  color: #2b2b2b !important;
+}
+
+.mode-nav .nav-btn:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+.mode-nav .nav-btn.active {
+  background: rgba(255, 255, 255, 1) !important;
+  color: var(--blue) !important;
+}
+
+.mode-nav .brand-mark {
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.35) !important;
+}
+/* ==========================================================
+   FINAL OVERRIDE: Shu Wheat/Cream Mode Navigation
+   ========================================================== */
+
+.mode-nav {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 249, 230, 0.88) 0%,
+    rgba(250, 236, 200, 0.90) 40%,
+    rgba(241, 219, 165, 0.92) 100%
+  ) !important;
+
+  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(22px) saturate(130%) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.10),
+    inset 0 0 30px rgba(255, 255, 255, 0.20) !important;
+}
+
+/* brand text */
+.mode-nav .brand-title,
+.mode-nav .brand,
+.mode-nav .eyebrow {
+  color: #1f2a33 !important;
+}
+
+/* brand dot */
+.mode-nav .brand-mark {
+  background: linear-gradient(145deg, var(--shu-gold), var(--shu-blue)) !important;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.35) !important;
+}
+
+/* nav buttons */
+.mode-nav .nav-btn {
+  background: rgba(255, 255, 255, 0.70) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  color: #2b2b2b !important;
+}
+
+.mode-nav .nav-btn:hover {
+  background: rgba(255, 255, 255, 0.90) !important;
+}
+
+.mode-nav .nav-btn.active {
+  background: rgba(255, 255, 255, 1) !important;
+  border-color: rgba(255, 255, 255, 1) !important;
+  color: var(--blue) !important;
 }

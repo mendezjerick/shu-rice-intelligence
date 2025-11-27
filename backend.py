@@ -23,6 +23,7 @@ if str(SRC_DIR) not in sys.path:
 from mli_rice import data as data_module  # noqa: E402
 from mli_rice.features import FeatureConfig, build_feature_table  # noqa: E402
 from mli_rice.modeling import TrainingConfig, multi_step_forecast  # noqa: E402
+from mli_rice.rules import advisories_to_frame, generate_advisories  # noqa: E402
 
 _WARNED_GLOBAL: set[str] = set()
 
@@ -114,7 +115,7 @@ class DataManager:
         if target_year and target_month:
             target_date = pd.Timestamp(year=target_year, month=target_month, day=1)
             forecasts = forecasts[forecasts["forecast_date"] == target_date]
-        forecasts = forecasts.sort_values(["step", "admin1"]).reset_index(drop=True)
+        forecasts = forecasts.sort_values(["step", self.training_cfg.region_col]).reset_index(drop=True)
         return forecasts, histories
 
     def _warn_once(self, key: str, message: str) -> None:
@@ -127,7 +128,7 @@ class DataManager:
 
 
 class RiceAppBackend:
-    """Exposes async methods that PyWebView can reach from JavaScript."""
+    """Exposes methods that PyWebView can reach from JavaScript."""
 
     def __init__(self, base_path: Path | None = None) -> None:
         base_dir = Path(getattr(sys, "_MEIPASS", base_path or Path(__file__).resolve().parent))
@@ -137,7 +138,61 @@ class RiceAppBackend:
         self._data_mgr = DataManager(base_dir)
         self._warned: set[str] = set()
 
-    async def get_price(self, date_str: str, location: str) -> dict:
+    def get_overview(self) -> dict:
+        """Return summary metrics for the dashboard tiles."""
+        df = getattr(self._data_mgr, "region_df", pd.DataFrame())
+        if not df.empty:
+            row_count = int(len(df))
+            region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
+            region_count = int(df[region_col].nunique())
+            min_date = pd.to_datetime(df["date"]).min()
+            max_date = pd.to_datetime(df["date"]).max()
+            year_range = f"{min_date.year}–{max_date.year}"
+            latest_month = max_date.strftime("%Y-%m")
+        else:
+            today = pd.Timestamp.today()
+            row_count = 0
+            region_count = 0
+            year_range = f"{today.year - 2}–{today.year}"
+            latest_month = pd.Timestamp(today.year, today.month, 1).strftime("%Y-%m")
+
+        return {
+            "rows": row_count,
+            "regions": region_count,
+            "year_range": year_range,
+            "latest_month": latest_month,
+        }
+
+    def get_national_series(self) -> dict:
+        """Serve national price history for the Plotly chart."""
+        national_df = getattr(self._data_mgr, "national_df", pd.DataFrame())
+        if not national_df.empty:
+            series = national_df.sort_values("date").tail(36)
+            dates = series["date"].dt.strftime("%Y-%m").tolist()
+            values = [round(float(v), 2) for v in series["national_price"]]
+            return {"dates": dates, "values": values}
+
+        # Fallback demo data if no dataset/model is available.
+        today = pd.Timestamp.today().normalize()
+        dates = []
+        values = []
+        base = 42.0
+        for months_back in range(15, -1, -1):
+            ts = today - pd.DateOffset(months=months_back)
+            dates.append(ts.strftime("%Y-%m"))
+            values.append(round(base + months_back * 0.25, 2))
+        return {"dates": dates, "values": values}
+
+    def get_regions(self) -> list[str]:
+        """Return unique regions available in the dataset."""
+        region_df = getattr(self._data_mgr, "region_df", pd.DataFrame())
+        region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
+        if region_df.empty or region_col not in region_df.columns:
+            return []
+        regions = sorted(region_df[region_col].dropna().astype(str).unique().tolist())
+        return regions
+
+    def get_price(self, date_str: str, location: str) -> dict:
         """Lookup the closest price on or before the provided date."""
         try:
             target_date = pd.to_datetime(date_str).to_period("M").to_timestamp()
@@ -147,10 +202,11 @@ class RiceAppBackend:
                 "location": location,
                 "price": None,
                 "status": "error",
-                "message": "Invalid date format. Use YYYY-MM-DD.",
+                "message": "Invalid date format. Use YYYY-MM or YYYY-MM-DD.",
             }
 
         region_df = self._data_mgr.region_df
+        region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
         if region_df.empty or not location:
             return {
                 "date": date_str,
@@ -160,8 +216,19 @@ class RiceAppBackend:
                 "message": "No data available for that location.",
             }
 
+        min_date = region_df["date"].min()
+        max_date = region_df["date"].max()
+        if target_date < min_date or target_date > max_date:
+            return {
+                "date": date_str,
+                "location": location,
+                "price": None,
+                "status": "no_data",
+                "message": "Date is outside the available data range.",
+            }
+
         matches = (
-            region_df.loc[region_df["admin1"] == location]
+            region_df.loc[region_df[region_col] == location]
             .loc[lambda df: df["date"] <= target_date]
             .sort_values("date")
         )
@@ -182,12 +249,15 @@ class RiceAppBackend:
             "status": "ok",
         }
 
-    async def get_forecast(self, months: int, target_year: Optional[int], target_month: Optional[int]) -> dict:
+    def get_forecast(self, months: int, target_year: Optional[int], target_month: Optional[int]) -> dict:
         """Return chart, table, and preview data for the forecast screen."""
         months = max(1, min(int(months or 1), 24))
         forecasts, histories = self._data_mgr.forecast(months, target_year, target_month)
+        notice = self._target_notice(months, target_year, target_month, forecasts)
+        if notice and (forecasts is None or forecasts.empty):
+            return self._empty_forecast(notice)
         if forecasts is None or forecasts.empty:
-            return self._naive_forecast(months)
+            return self._naive_forecast(months, notice=notice)
 
         historical_series = self._data_mgr.national_df.sort_values("date").tail(24)
         forecast_series = (
@@ -214,14 +284,14 @@ class RiceAppBackend:
                 "Multi-step forecasts are generated from the trained pipeline using region-level "
                 "features. Plug your DataManager here if you want to customize the logic."
             ),
+            "advisories": self._build_advisories(forecasts, histories),
+            "notice": notice,
         }
 
         # Optionally compute rule-based advisories using histories and forecasts.
-        # TODO: If you want advisories in the UI, return them here and render in main.js.
-        _ = histories
         return payload
 
-    def _naive_forecast(self, months: int) -> dict:
+    def _naive_forecast(self, months: int, notice: Optional[str] = None) -> dict:
         """Fallback forecast using a simple growth curve if the model is unavailable."""
         history = self._data_mgr.national_df.copy()
         if history.empty:
@@ -240,9 +310,10 @@ class RiceAppBackend:
             forecast_dates.append(forecast_date.strftime("%Y-%m"))
             forecast_values.append(round(last_price * ((1 + growth) ** step), 2))
 
-        sample_regions = self._data_mgr.region_df["admin1"].unique().tolist() if not self._data_mgr.region_df.empty else [
-            "Sample Region"
-        ]
+        region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
+        sample_regions = (
+            self._data_mgr.region_df[region_col].unique().tolist() if not self._data_mgr.region_df.empty else ["Sample Region"]
+        )
         table_rows = []
         for region in sample_regions:
             for step, (f_date, f_price) in enumerate(zip(forecast_dates, forecast_values, strict=False), start=1):
@@ -269,6 +340,22 @@ class RiceAppBackend:
                 "No trained model detected, so this uses a simple growth-based projection. "
                 "Replace _naive_forecast with your model output."
             ),
+            "advisories": [],
+            "notice": notice,
+        }
+
+    def _empty_forecast(self, notice: str) -> dict:
+        """Return an empty forecast payload with a helpful notice."""
+        return {
+            "historical": {"dates": [], "values": []},
+            "forecast": {"dates": [], "values": []},
+            "table": [],
+            "train_head": [],
+            "holdout_head": [],
+            "metrics": {"message": notice},
+            "explanation": notice,
+            "advisories": [],
+            "notice": notice,
         }
 
     def _frame_preview(self, df: pd.DataFrame) -> list[dict]:
@@ -285,7 +372,7 @@ class RiceAppBackend:
         for _, row in forecasts.iterrows():
             rows.append(
                 {
-                    "region": row["admin1"],
+                    "region": row[getattr(self._data_mgr.training_cfg, "region_col", "region")],
                     "current_date": row["current_date"].strftime("%Y-%m"),
                     "forecast_date": row["forecast_date"].strftime("%Y-%m"),
                     "avg_price": round(float(row["avg_price"]), 2),
@@ -295,6 +382,49 @@ class RiceAppBackend:
                 }
             )
         return rows
+
+    def _build_advisories(self, forecasts: pd.DataFrame, histories: list[pd.DataFrame]) -> list[dict]:
+        advisories: list[dict] = []
+        region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
+        for step_idx, history in enumerate(histories or [], start=1):
+            step_preds = forecasts[forecasts["step"] == step_idx]
+            if step_preds.empty:
+                continue
+            step_advs = generate_advisories(history, step_preds)
+            if not step_advs:
+                continue
+            frame = advisories_to_frame(step_advs)
+            frame["forecast_date"] = step_preds["forecast_date"].dt.strftime("%Y-%m").iloc[0]
+            frame["step"] = step_idx
+            # Ensure region key matches frontend expectation.
+            frame = frame.rename(columns={region_col: "region"}) if region_col in frame.columns else frame
+            advisories.extend(frame.to_dict(orient="records"))
+        return advisories
+
+    def _target_notice(
+        self,
+        months: int,
+        target_year: Optional[int],
+        target_month: Optional[int],
+        forecasts: pd.DataFrame,
+    ) -> Optional[str]:
+        if not target_year or not target_month:
+            return None
+        target_date = pd.Timestamp(year=target_year, month=target_month, day=1)
+        if forecasts is not None and not forecasts.empty:
+            return None
+        latest_feature_date = None
+        if not self._data_mgr.region_df.empty:
+            latest_feature_date = pd.to_datetime(self._data_mgr.region_df["date"]).max()
+        if latest_feature_date is None:
+            return "No data available to estimate steps for that target date."
+        months_diff = (target_date.year - latest_feature_date.year) * 12 + (target_date.month - latest_feature_date.month)
+        if months_diff <= 0:
+            return "Target date is within or before the training window; no forecast rows matched."
+        return (
+            f"No forecast rows matched the target date. "
+            f"Try setting months ahead to at least {months_diff} to reach {target_date.strftime('%Y-%m')}."
+        )
 
     def _warn_once(self, key: str, message: str) -> None:
         if key not in self._warned:

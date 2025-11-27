@@ -33,7 +33,7 @@ def describe(data_path: Path = typer.Option(None, help="Path to rice.csv")) -> N
     table.add_column("Observations", justify="right")
     table.add_column("First Year", justify="right")
     table.add_column("Last Year", justify="right")
-    for region, group in df.groupby("admin1"):
+    for region, group in df.groupby("region"):
         table.add_row(region, f"{len(group):,}", str(group["year"].min()), str(group["year"].max()))
     console.print(table)
 

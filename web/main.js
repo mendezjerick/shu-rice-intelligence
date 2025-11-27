@@ -1,7 +1,31 @@
-const sections = ["home", "check-price", "forecast"];
+const sections = ["dashboard", "check-price", "forecast"];
+const SECTION_ALIASES = { home: "dashboard" };
 let forecastChart = null;
+let api = null;
 
 const demoApi = {
+  async get_regions() {
+    return ["Sample Region A", "Sample Region B", "Sample Region C"];
+  },
+  async get_overview() {
+    return {
+      rows: 12480,
+      regions: 17,
+      year_range: "2022–2024",
+      latest_month: "2024-09",
+    };
+  },
+  async get_national_series() {
+    const today = new Date();
+    const dates = [];
+    const values = [];
+    for (let i = 16; i >= 0; i -= 1) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      dates.push(formatMonth(d));
+      values.push(Number((44 + i * 0.35).toFixed(2)));
+    }
+    return { dates, values };
+  },
   async get_price(dateStr, location) {
     const today = new Date();
     const date = dateStr || today.toISOString().slice(0, 10);
@@ -48,11 +72,11 @@ const demoApi = {
       });
     });
 
-    const sampleRows = Array.from({ length: 6 }).map((_, idx) => ({
-      admin1: regions[idx % regions.length],
-      date: historyDates[idx],
-      avg_price: historyValues[idx] || base,
-    }));
+  const sampleRows = Array.from({ length: 6 }).map((_, idx) => ({
+    region: regions[idx % regions.length],
+    date: historyDates[idx],
+    avg_price: historyValues[idx] || base,
+  }));
 
     return {
       historical: { dates: historyDates, values: historyValues },
@@ -66,26 +90,162 @@ const demoApi = {
   },
 };
 
-const api = window.pywebview?.api || demoApi;
-
 document.addEventListener("DOMContentLoaded", () => {
+  showLoader();
+  bindApi();
   initNavigation();
   setDefaultFormValues();
+  loadRegions();
 
   document.getElementById("checkPriceBtn")?.addEventListener("click", handlePriceCheck);
   document.getElementById("runForecastBtn")?.addEventListener("click", handleForecast);
 
-  showSection("home");
+  showSection("dashboard");
+  loadOverview();
+  loadNationalChart();
 });
+
+function bindApi() {
+  if (window.pywebview?.api) {
+    api = window.pywebview.api;
+    refreshDashboardData().finally(hideLoader);
+    loadRegions();
+    return;
+  }
+  api = demoApi;
+  window.addEventListener(
+    "pywebviewready",
+    () => {
+      api = window.pywebview.api;
+      refreshDashboardData().finally(hideLoader);
+      loadRegions();
+    },
+    { once: true },
+  );
+}
+
+function refreshDashboardData() {
+  return Promise.all([loadOverview(), loadNationalChart()]);
+}
+
+function normalizeSection(target) {
+  return SECTION_ALIASES[target] || target;
+}
 
 function initNavigation() {
   document.querySelectorAll("[data-target]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const target = btn.getAttribute("data-target");
-      if (target) {
-        showSection(target);
-      }
+      const rawTarget = btn.getAttribute("data-target");
+      const target = normalizeSection(rawTarget);
+      if (!target) return;
+      showSection(target);
+      setNavActive(target);
     });
+  });
+}
+
+function setNavActive(target) {
+  const navButtons = document.querySelectorAll(".main-nav [data-target]");
+  navButtons.forEach((btn) => {
+    const isActive = normalizeSection(btn.getAttribute("data-target")) === target;
+    btn.classList.toggle("active", isActive);
+  });
+}
+
+async function loadRegions() {
+  const select = document.getElementById("locationSelect");
+  if (!select) return;
+  const fallback = await demoApi.get_regions();
+  let regions = fallback;
+  try {
+    regions = api && api.get_regions ? await api.get_regions() : fallback;
+  } catch (err) {
+    regions = fallback;
+    console.error("Region load failed", err); // eslint-disable-line no-console
+  }
+  select.innerHTML = '<option value="">Select a region</option>';
+  regions.forEach((region) => {
+    const option = document.createElement("option");
+    option.value = region;
+    option.textContent = region;
+    select.appendChild(option);
+  });
+}
+
+async function loadOverview() {
+  const fallback = await demoApi.get_overview();
+  try {
+    const data = api && api.get_overview ? await api.get_overview() : fallback;
+    renderOverview(data || fallback);
+  } catch (err) {
+    renderOverview(fallback);
+    console.error("Overview load failed", err); // eslint-disable-line no-console
+  }
+}
+
+function renderOverview(data) {
+  const { rows, regions, year_range: yearRange, latest_month: latestMonth } = data || {};
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = value ?? "--";
+    }
+  };
+  setText("overviewRows", formatNumber(rows, 0));
+  setText("overviewRegions", formatNumber(regions, 0));
+  setText("overviewYears", yearRange || "--");
+  setText("overviewLatest", latestMonth || "--");
+}
+
+async function loadNationalChart() {
+  const chartEl = document.getElementById("nationalChart");
+  if (!chartEl || !window.Plotly) return;
+
+  const fallback = await demoApi.get_national_series();
+  let series = fallback;
+  try {
+    series = api && api.get_national_series ? await api.get_national_series() : fallback;
+  } catch (err) {
+    series = fallback;
+    console.error("National series load failed", err); // eslint-disable-line no-console
+  }
+
+  const dates = series?.dates || [];
+  const values = series?.values || [];
+  const trace = {
+    x: dates,
+    y: values,
+    type: "scatter",
+    mode: "lines+markers",
+    line: { color: "#A7CFF2", width: 3 },
+    marker: { size: 7, color: "#F2C649" },
+    fill: "tozeroy",
+    fillcolor: "rgba(167, 207, 242, 0.18)",
+    hovertemplate: "%{x}<br>₱%{y:.2f}/kg<extra></extra>",
+  };
+
+  const layout = {
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    margin: { t: 20, r: 20, b: 50, l: 50 },
+    font: { color: "#f1f1f1", family: "Inter, 'Segoe UI', system-ui, sans-serif" },
+    xaxis: {
+      title: "",
+      gridcolor: "rgba(255,255,255,0.08)",
+      tickfont: { color: "rgba(241,241,241,0.9)" },
+    },
+    yaxis: {
+      title: "PHP / kg",
+      gridcolor: "rgba(255,255,255,0.08)",
+      zerolinecolor: "rgba(255,255,255,0.15)",
+      tickfont: { color: "rgba(241,241,241,0.9)" },
+    },
+  };
+
+  Plotly.newPlot(chartEl, [trace], layout, {
+    responsive: true,
+    displaylogo: false,
+    modeBarButtonsToRemove: ["select2d", "lasso2d"],
   });
 }
 
@@ -93,7 +253,7 @@ function setDefaultFormValues() {
   const today = new Date();
   const dateInput = document.getElementById("priceDate");
   if (dateInput) {
-    dateInput.value = today.toISOString().slice(0, 10);
+    dateInput.value = today.toISOString().slice(0, 7); // YYYY-MM for month picker
   }
 
   const targetYear = document.getElementById("targetYear");
@@ -107,12 +267,18 @@ function setDefaultFormValues() {
 }
 
 function showSection(id) {
+  const normalized = normalizeSection(id);
   sections.forEach((name) => {
     const el = document.getElementById(name);
     if (el) {
-      el.classList.toggle("active", name === id);
+      el.classList.toggle("active", name === normalized);
     }
   });
+  setNavActive(normalized);
+  const nav = document.getElementById("dashboardNav");
+  if (nav) {
+    nav.classList.toggle("hidden", normalized !== "dashboard");
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -200,7 +366,11 @@ function renderForecast(data) {
   renderPreviewTable("trainTable", data.train_head || []);
   renderPreviewTable("holdoutTable", data.holdout_head || []);
   renderMetrics(data.metrics || {});
+  renderAdvisories(data.advisories || []);
   renderExplanation(data.explanation || "");
+  if (data.notice) {
+    renderNotice(data.notice);
+  }
 }
 
 function renderChart(historical, forecast) {
@@ -209,10 +379,7 @@ function renderChart(historical, forecast) {
 
   const labels = [...(historical?.dates || []), ...(forecast?.dates || [])];
   const histValues = [...(historical?.values || []), ...Array(forecast?.dates?.length || 0).fill(null)];
-  const forecastValues = [
-    ...Array(historical?.dates?.length || 0).fill(null),
-    ...(forecast?.values || []),
-  ];
+  const forecastValues = [...Array(historical?.dates?.length || 0).fill(null), ...(forecast?.values || [])];
 
   if (forecastChart) {
     forecastChart.destroy();
@@ -334,10 +501,57 @@ function renderExplanation(text) {
   }
 }
 
+function renderAdvisories(items) {
+  const container = document.getElementById("advisoriesList");
+  if (!container) return;
+  if (!items.length) {
+    container.textContent = "No advisories generated.";
+    return;
+  }
+  container.innerHTML = "";
+  items.forEach((item) => {
+    const pill = document.createElement("div");
+    pill.className = "advisory-pill";
+    pill.innerHTML = `
+      <div class="advisory-header">
+        <span class="advisory-region">${item.region ?? "Unknown region"}</span>
+        <span class="advisory-badge">${item.category ?? "Advisory"}</span>
+        <span class="advisory-meta">Forecast: ${item.forecast_date ?? "--"} · Step ${item.step ?? "--"} · ${item.sdg_focus ?? ""}</span>
+      </div>
+      <div class="advisory-body">${item.message ?? ""}</div>
+      <div class="advisory-rationale">${item.rationale ?? ""}</div>
+    `;
+    container.appendChild(pill);
+  });
+}
+
+function renderNotice(text) {
+  if (!text) return;
+  const metrics = document.getElementById("metricsBlock");
+  if (metrics) {
+    metrics.textContent = JSON.stringify({ notice: text }, null, 2);
+  }
+}
+
+function showLoader() {
+  const overlay = document.getElementById("appLoader");
+  if (overlay) overlay.classList.add("active");
+}
+
+function hideLoader() {
+  const overlay = document.getElementById("appLoader");
+  if (overlay) overlay.classList.remove("active");
+}
+
 function formatMonth(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function formatNumber(value) {
-  return value != null ? Number(value).toFixed(2) : "--";
+function formatNumber(value, digits = 2) {
+  if (value == null || Number.isNaN(Number(value))) return "--";
+  const numberValue = Number(value);
+  return numberValue.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
 }

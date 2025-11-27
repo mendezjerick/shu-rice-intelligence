@@ -17,8 +17,8 @@ def main() -> None:
         "Shu Rice Intelligence",
         html_path.as_uri(),
         js_api=backend,
-        width=1280,
-        height=800,
+        width=1400,
+        height=900,
         resizable=True,
     )
     webview.start()

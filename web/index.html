@@ -5,36 +5,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shu Rice Intelligence</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-  <section id="home" class="screen bg-home active">
-    <div class="section-overlay"></div>
-    <div class="content center">
-      <div class="card glass hero-card">
-        <p class="eyebrow">Shu Rice Intelligence</p>
-        <h1>Bright rice market intelligence</h1>
-        <p class="subtitle">
-          Check spot prices or generate multi-step forecasts with your existing ML pipeline.
-        </p>
-        <div class="hero-actions">
-          <button class="btn primary" data-target="check-price">Check Price</button>
-          <button class="btn secondary" data-target="forecast">Forecast</button>
+<body class="dashboard-bg">
+  <div id="appLoader" class="loader-overlay active">
+    <div class="loader-card glass-panel">
+      <div class="loader-spinner"></div>
+      <div class="loader-text">
+        <p class="eyebrow light">Loading</p>
+        <h2>Shu Rice Intelligence</h2>
+        <p class="subtitle light">Warming up the dashboard...</p>
+      </div>
+    </div>
+  </div>
+
+  <nav id="dashboardNav" class="main-nav glass-panel fade-in">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <p class="eyebrow light">Home</p>
+        <h1 class="brand-title">Shu Rice Intelligence</h1>
+      </div>
+    </div>
+    <div class="nav-buttons">
+      <button class="nav-btn active" data-target="dashboard">Home (Dashboard)</button>
+      <button class="nav-btn" data-target="check-price">Price Observatory</button>
+      <button class="nav-btn" data-target="forecast">Forecast Studio</button>
+    </div>
+  </nav>
+
+  <section id="dashboard" class="screen dashboard-screen active">
+    <div class="dashboard-overlay"></div>
+    <div class="dashboard-content">
+      <div class="panel overview-panel glass-panel fade-in">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow light">Data overview</p>
+            <h2>Dataset snapshot</h2>
+            <p class="subtitle light">Live metrics sourced from the backend</p>
+          </div>
+          <div class="chip">Live feed</div>
         </div>
+        <div class="overview-grid">
+          <div class="overview-tile">
+            <p class="label">Rows count</p>
+            <h3 id="overviewRows">--</h3>
+            <span class="mini-text">Total records</span>
+          </div>
+          <div class="overview-tile">
+            <p class="label">Region count</p>
+            <h3 id="overviewRegions">--</h3>
+            <span class="mini-text">Unique admin regions</span>
+          </div>
+          <div class="overview-tile">
+            <p class="label">Year range</p>
+            <h3 id="overviewYears">--</h3>
+            <span class="mini-text">Coverage period</span>
+          </div>
+          <div class="overview-tile">
+            <p class="label">Latest month</p>
+            <h3 id="overviewLatest">--</h3>
+            <span class="mini-text">Most recent datapoint</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel chart-panel glass-panel fade-in">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow light">National line chart</p>
+            <h2>National price trajectory</h2>
+            <p class="subtitle light">Hover to inspect values, zoom/pan, or export a snapshot.</p>
+          </div>
+          <div class="chip accent">Interactive</div>
+        </div>
+        <div id="nationalChart"></div>
       </div>
     </div>
   </section>
 
   <section id="check-price" class="screen bg-mode">
     <div class="section-overlay"></div>
-    <div class="top-nav glass">
-      <div class="nav-left">
-        <span class="nav-title">Shu Rice Intelligence</span>
+    <div class="mode-nav glass-panel">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <p class="eyebrow">PRICE OBSERVATORY</p>
+          <h1 class="brand-title">Shu Rice Intelligence</h1>
+        </div>
       </div>
-      <div class="nav-actions">
-        <button class="btn ghost" data-target="home">Home</button>
-        <button class="btn ghost" data-target="check-price">Check Price</button>
-        <button class="btn ghost" data-target="forecast">Forecast</button>
+
+      <div class="nav-buttons">
+        <button class="nav-btn" data-target="dashboard">Home (Dashboard)</button>
+        <button class="nav-btn" data-target="check-price">Price Observatory</button>
+        <button class="nav-btn" data-target="forecast">Forecast Studio</button>
       </div>
     </div>
     <div class="content">
@@ -43,13 +108,13 @@
           <div>
             <p class="eyebrow">Spot check</p>
             <h2>Check Price</h2>
-            <p class="subtitle small">Select a date and location to see the recorded price.</p>
+            <p class="subtitle small">Select a month and location to see the recorded price.</p>
           </div>
         </div>
         <div class="form-grid">
           <label class="form-field">
-            <span>Date (YYYY-MM-DD)</span>
-            <input type="date" id="priceDate">
+            <span>Month (YYYY-MM)</span>
+            <input type="month" id="priceDate">
           </label>
           <label class="form-field">
             <span>Location / Region</span>
@@ -97,14 +162,19 @@
 
   <section id="forecast" class="screen bg-mode">
     <div class="section-overlay"></div>
-    <div class="top-nav glass">
-      <div class="nav-left">
-        <span class="nav-title">Shu Rice Intelligence</span>
+    <div class="mode-nav glass-panel">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <p class="eyebrow">FORECAST STUDIO</p>
+          <h1 class="brand-title">Shu Rice Intelligence</h1>
+        </div>
       </div>
-      <div class="nav-actions">
-        <button class="btn ghost" data-target="home">Home</button>
-        <button class="btn ghost" data-target="check-price">Check Price</button>
-        <button class="btn ghost" data-target="forecast">Forecast</button>
+
+      <div class="nav-buttons">
+        <button class="nav-btn" data-target="dashboard">Home (Dashboard)</button>
+        <button class="nav-btn" data-target="check-price">Price Observatory</button>
+        <button class="nav-btn" data-target="forecast">Forecast Studio</button>
       </div>
     </div>
     <div class="content">
@@ -208,6 +278,16 @@
               </table>
             </div>
           </div>
+        </div>
+
+        <div class="card glass advisories-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Advisories</p>
+              <h3>Rule-based insights</h3>
+            </div>
+          </div>
+          <div id="advisoriesList" class="advisories-list">No advisories generated.</div>
         </div>
 
         <div class="card glass metrics-card">

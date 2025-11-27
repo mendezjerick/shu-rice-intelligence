@@ -28,7 +28,7 @@ def build_feature_table(
     df: pd.DataFrame,
     *,
     price_col: str = "avg_price",
-    region_col: str = "admin1",
+    region_col: str = "region",
     config: FeatureConfig | None = None,
     drop_last_horizon: bool = True,
     drop_rows_with_na: bool = True,
