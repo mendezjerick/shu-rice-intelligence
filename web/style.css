@@ -359,6 +359,7 @@ tbody tr:nth-child(even) {
   display: grid;
   gap: 10px;
   margin-top: 8px;
+  color: #1f2a33;
 }
 
 .advisory-pill {

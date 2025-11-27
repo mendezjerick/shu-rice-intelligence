@@ -253,8 +253,11 @@ class RiceAppBackend:
         """Return chart, table, and preview data for the forecast screen."""
         months = max(1, min(int(months or 1), 24))
         forecasts, histories = self._data_mgr.forecast(months, target_year, target_month)
+        notice = self._target_notice(months, target_year, target_month, forecasts)
+        if notice and (forecasts is None or forecasts.empty):
+            return self._empty_forecast(notice)
         if forecasts is None or forecasts.empty:
-            return self._naive_forecast(months)
+            return self._naive_forecast(months, notice=notice)
 
         historical_series = self._data_mgr.national_df.sort_values("date").tail(24)
         forecast_series = (
@@ -282,12 +285,13 @@ class RiceAppBackend:
                 "features. Plug your DataManager here if you want to customize the logic."
             ),
             "advisories": self._build_advisories(forecasts, histories),
+            "notice": notice,
         }
 
         # Optionally compute rule-based advisories using histories and forecasts.
         return payload
 
-    def _naive_forecast(self, months: int) -> dict:
+    def _naive_forecast(self, months: int, notice: Optional[str] = None) -> dict:
         """Fallback forecast using a simple growth curve if the model is unavailable."""
         history = self._data_mgr.national_df.copy()
         if history.empty:
@@ -337,6 +341,21 @@ class RiceAppBackend:
                 "Replace _naive_forecast with your model output."
             ),
             "advisories": [],
+            "notice": notice,
+        }
+
+    def _empty_forecast(self, notice: str) -> dict:
+        """Return an empty forecast payload with a helpful notice."""
+        return {
+            "historical": {"dates": [], "values": []},
+            "forecast": {"dates": [], "values": []},
+            "table": [],
+            "train_head": [],
+            "holdout_head": [],
+            "metrics": {"message": notice},
+            "explanation": notice,
+            "advisories": [],
+            "notice": notice,
         }
 
     def _frame_preview(self, df: pd.DataFrame) -> list[dict]:
@@ -381,6 +400,31 @@ class RiceAppBackend:
             frame = frame.rename(columns={region_col: "region"}) if region_col in frame.columns else frame
             advisories.extend(frame.to_dict(orient="records"))
         return advisories
+
+    def _target_notice(
+        self,
+        months: int,
+        target_year: Optional[int],
+        target_month: Optional[int],
+        forecasts: pd.DataFrame,
+    ) -> Optional[str]:
+        if not target_year or not target_month:
+            return None
+        target_date = pd.Timestamp(year=target_year, month=target_month, day=1)
+        if forecasts is not None and not forecasts.empty:
+            return None
+        latest_feature_date = None
+        if not self._data_mgr.region_df.empty:
+            latest_feature_date = pd.to_datetime(self._data_mgr.region_df["date"]).max()
+        if latest_feature_date is None:
+            return "No data available to estimate steps for that target date."
+        months_diff = (target_date.year - latest_feature_date.year) * 12 + (target_date.month - latest_feature_date.month)
+        if months_diff <= 0:
+            return "Target date is within or before the training window; no forecast rows matched."
+        return (
+            f"No forecast rows matched the target date. "
+            f"Try setting months ahead to at least {months_diff} to reach {target_date.strftime('%Y-%m')}."
+        )
 
     def _warn_once(self, key: str, message: str) -> None:
         if key not in self._warned:

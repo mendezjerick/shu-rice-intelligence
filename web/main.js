@@ -368,6 +368,9 @@ function renderForecast(data) {
   renderMetrics(data.metrics || {});
   renderAdvisories(data.advisories || []);
   renderExplanation(data.explanation || "");
+  if (data.notice) {
+    renderNotice(data.notice);
+  }
 }
 
 function renderChart(historical, forecast) {
@@ -520,6 +523,14 @@ function renderAdvisories(items) {
     `;
     container.appendChild(pill);
   });
+}
+
+function renderNotice(text) {
+  if (!text) return;
+  const metrics = document.getElementById("metricsBlock");
+  if (metrics) {
+    metrics.textContent = JSON.stringify({ notice: text }, null, 2);
+  }
 }
 
 function formatMonth(date) {
