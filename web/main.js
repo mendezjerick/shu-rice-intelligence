@@ -91,6 +91,7 @@ const demoApi = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  showLoader();
   bindApi();
   initNavigation();
   setDefaultFormValues();
@@ -107,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function bindApi() {
   if (window.pywebview?.api) {
     api = window.pywebview.api;
-    refreshDashboardData();
+    refreshDashboardData().finally(hideLoader);
     loadRegions();
     return;
   }
@@ -116,7 +117,7 @@ function bindApi() {
     "pywebviewready",
     () => {
       api = window.pywebview.api;
-      refreshDashboardData();
+      refreshDashboardData().finally(hideLoader);
       loadRegions();
     },
     { once: true },
@@ -124,8 +125,7 @@ function bindApi() {
 }
 
 function refreshDashboardData() {
-  loadOverview();
-  loadNationalChart();
+  return Promise.all([loadOverview(), loadNationalChart()]);
 }
 
 function normalizeSection(target) {
@@ -531,6 +531,16 @@ function renderNotice(text) {
   if (metrics) {
     metrics.textContent = JSON.stringify({ notice: text }, null, 2);
   }
+}
+
+function showLoader() {
+  const overlay = document.getElementById("appLoader");
+  if (overlay) overlay.classList.add("active");
+}
+
+function hideLoader() {
+  const overlay = document.getElementById("appLoader");
+  if (overlay) overlay.classList.remove("active");
 }
 
 function formatMonth(date) {

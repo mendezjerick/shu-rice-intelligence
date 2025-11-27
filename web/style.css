@@ -427,6 +427,52 @@ tbody tr:nth-child(even) {
   height: 320px !important;
 }
 
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.loader-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.loader-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 26px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f1f1f1;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+.loader-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--shu-gold);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 body.dashboard-bg {
   background: linear-gradient(125deg, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.48)), url("../backgrounds/shu.jpg");
   background-size: cover;
@@ -436,8 +482,7 @@ body.dashboard-bg {
 }
 
 .main-nav {
-  position: sticky;
-  top: 16px;
+  position: static;
   margin: 16px 6vw 0;
   padding: 14px 18px;
   display: flex;
@@ -749,8 +794,8 @@ body.dashboard-bg {
   .main-nav {
     flex-direction: column;
     align-items: flex-start;
-    top: 10px;
     margin: 10px 4vw 0;
+    padding: 12px 16px;
   }
 
   .dashboard-content {
