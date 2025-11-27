@@ -483,18 +483,25 @@ body.dashboard-bg {
 
 .main-nav {
   position: static;
+  top: 16px;
+
   margin: 16px 6vw 0;
+
+  /* REMOVE width/max-width completely */
+
   padding: 14px 18px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+
   z-index: 10;
   border-radius: 18px;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-strong);
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
 .main-nav.hidden {
@@ -669,9 +676,7 @@ body.dashboard-bg {
 
 .dashboard-screen {
   position: relative;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.45)), url("../backgrounds/shu.jpg");
-  background-size: cover;
-  background-position: center;
+  background: transparent; /* use body background only to avoid double images */
   overflow: hidden;
 }
 

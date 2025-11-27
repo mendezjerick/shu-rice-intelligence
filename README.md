@@ -80,14 +80,24 @@ Retrain via the CLI whenever new data arrives—the PySide6 UI automatically pic
 
 ## Build a standalone EXE (Windows)
 
-Bundle the entire project as a portable PySide6 executable:
+Bundle the entire project as a portable executable with the Shu icon:
 
 1. Install PyInstaller (one-time): `pip install pyinstaller`
-2. Run the helper script (add `-Clean` to wipe previous builds):
+2. From the repo root:
    ```powershell
-   ./build_exe.ps1
+   python -m PyInstaller --clean --noconsole --onefile app.py `
+     --name "Shu Rice Intelligence" `
+     --paths src `
+     --add-data "web;web" --add-data "backgrounds;backgrounds" --add-data "icons;icons" `
+     --add-data "rice.csv;." --add-data "artifacts;artifacts" `
+     --icon "icons/shu.ico"
    ```
-3. The packaged app lives in `dist/ShuRiceApp.exe`, uses the Shu icon (`icons/shu.ico`), and automatically includes `rice.csv`, `backgrounds/`, `icons/`, `src/`, and `artifacts/best_model.joblib`. Launch it and the PySide6 window appears instantly (no browser). Any startup issues are logged to `ShuRiceApp_error.log` beside the EXE.
+3. The packaged app lives in `dist/Shu Rice Intelligence.exe`, includes `rice.csv`, `backgrounds/`, `icons/`, `src/`, and `artifacts/`, and shows the Shu icon. You can also rename the EXE manually in `dist` without breaking it. Upload this single file as a GitHub release asset; users only need to download and run it (SmartScreen may require “More info” → “Run anyway”).
+
+## Dashboard UX updates
+
+- Home/Dashboard now has a single dim background (no double overlay), a frosted navbar matching the cards, and a global loading screen while data/chart initialize.
+- Forecast Studio shows rule-based advisories in their own card; if a target date is unreachable with the chosen months ahead, the app returns an empty forecast with a clear notice instead of placeholder data.
 
 ## Modeling approach
 
