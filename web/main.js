@@ -366,6 +366,7 @@ function renderForecast(data) {
   renderPreviewTable("trainTable", data.train_head || []);
   renderPreviewTable("holdoutTable", data.holdout_head || []);
   renderMetrics(data.metrics || {});
+  renderAdvisories(data.advisories || []);
   renderExplanation(data.explanation || "");
 }
 
@@ -495,6 +496,30 @@ function renderExplanation(text) {
   if (el) {
     el.textContent = text;
   }
+}
+
+function renderAdvisories(items) {
+  const container = document.getElementById("advisoriesList");
+  if (!container) return;
+  if (!items.length) {
+    container.textContent = "No advisories generated.";
+    return;
+  }
+  container.innerHTML = "";
+  items.forEach((item) => {
+    const pill = document.createElement("div");
+    pill.className = "advisory-pill";
+    pill.innerHTML = `
+      <div class="advisory-header">
+        <span class="advisory-region">${item.region ?? "Unknown region"}</span>
+        <span class="advisory-badge">${item.category ?? "Advisory"}</span>
+        <span class="advisory-meta">Forecast: ${item.forecast_date ?? "--"} · Step ${item.step ?? "--"} · ${item.sdg_focus ?? ""}</span>
+      </div>
+      <div class="advisory-body">${item.message ?? ""}</div>
+      <div class="advisory-rationale">${item.rationale ?? ""}</div>
+    `;
+    container.appendChild(pill);
+  });
 }
 
 function formatMonth(date) {

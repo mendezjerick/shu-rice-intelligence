@@ -355,6 +355,62 @@ tbody tr:nth-child(even) {
   white-space: pre-wrap;        /* avoids text going off screen */
 }
 
+.advisories-card .advisories-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.advisory-pill {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #1f2a33;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.advisory-pill .advisory-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.advisory-pill .advisory-region {
+  color: #1f2a33;
+}
+
+.advisory-pill .advisory-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(242, 198, 73, 0.2);
+  color: #7a5a10;
+  border: 1px solid rgba(242, 198, 73, 0.4);
+  font-size: 13px;
+}
+
+.advisory-pill .advisory-meta {
+  font-size: 12px;
+  color: #394452;
+}
+
+.advisory-pill .advisory-body {
+  margin: 4px 0;
+  line-height: 1.5;
+  color: #1f2a33;
+}
+
+.advisory-pill .advisory-rationale {
+  font-size: 13px;
+  color: #4c5665;
+}
+
 .explanation-card p {
   margin-top: 8px;
   line-height: 1.55;

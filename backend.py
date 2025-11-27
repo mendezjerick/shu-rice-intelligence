@@ -23,6 +23,7 @@ if str(SRC_DIR) not in sys.path:
 from mli_rice import data as data_module  # noqa: E402
 from mli_rice.features import FeatureConfig, build_feature_table  # noqa: E402
 from mli_rice.modeling import TrainingConfig, multi_step_forecast  # noqa: E402
+from mli_rice.rules import advisories_to_frame, generate_advisories  # noqa: E402
 
 _WARNED_GLOBAL: set[str] = set()
 
@@ -280,11 +281,10 @@ class RiceAppBackend:
                 "Multi-step forecasts are generated from the trained pipeline using region-level "
                 "features. Plug your DataManager here if you want to customize the logic."
             ),
+            "advisories": self._build_advisories(forecasts, histories),
         }
 
         # Optionally compute rule-based advisories using histories and forecasts.
-        # TODO: If you want advisories in the UI, return them here and render in main.js.
-        _ = histories
         return payload
 
     def _naive_forecast(self, months: int) -> dict:
@@ -336,6 +336,7 @@ class RiceAppBackend:
                 "No trained model detected, so this uses a simple growth-based projection. "
                 "Replace _naive_forecast with your model output."
             ),
+            "advisories": [],
         }
 
     def _frame_preview(self, df: pd.DataFrame) -> list[dict]:
@@ -362,6 +363,24 @@ class RiceAppBackend:
                 }
             )
         return rows
+
+    def _build_advisories(self, forecasts: pd.DataFrame, histories: list[pd.DataFrame]) -> list[dict]:
+        advisories: list[dict] = []
+        region_col = getattr(self._data_mgr.training_cfg, "region_col", "region")
+        for step_idx, history in enumerate(histories or [], start=1):
+            step_preds = forecasts[forecasts["step"] == step_idx]
+            if step_preds.empty:
+                continue
+            step_advs = generate_advisories(history, step_preds)
+            if not step_advs:
+                continue
+            frame = advisories_to_frame(step_advs)
+            frame["forecast_date"] = step_preds["forecast_date"].dt.strftime("%Y-%m").iloc[0]
+            frame["step"] = step_idx
+            # Ensure region key matches frontend expectation.
+            frame = frame.rename(columns={region_col: "region"}) if region_col in frame.columns else frame
+            advisories.extend(frame.to_dict(orient="records"))
+        return advisories
 
     def _warn_once(self, key: str, message: str) -> None:
         if key not in self._warned:
