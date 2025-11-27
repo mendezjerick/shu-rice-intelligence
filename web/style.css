@@ -323,8 +323,20 @@ tbody tr:nth-child(even) {
 
 .split-table {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 14px;
+}
+
+.split-table > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 320px;
+  overflow: auto;
+}
+
+.split-table table {
+  width: max-content;
 }
 
 .metrics-card pre {
